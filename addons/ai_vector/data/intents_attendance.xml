@@ -303,5 +303,69 @@ Which days are busiest?</field>
         <field name="active">True</field>
     </record>
     
+    <record id="intent_today_checkins" model="ai.intent.schema">
+        <field name="intent_type">today_checkins</field>
+        <field name="name">Today's Check-ins</field>
+        <field name="description">Count and list members who checked in today</field>
+        <field name="category">read</field>
+        <field name="parameters_schema">{"type": "object", "properties": {}}</field>
+        <field name="example_phrases">Who checked in today?
+How many people came in today?
+Today's attendance
+Who's been in today?
+How many check-ins so far today?</field>
+        <field name="allowed_roles">instructor,admin</field>
+        <field name="requires_confirmation">False</field>
+        <field name="is_undoable">False</field>
+        <field name="supports_bulk">False</field>
+        <field name="active">True</field>
+    </record>
+    <record id="intent_open_spots" model="ai.intent.schema">
+        <field name="intent_type">open_spots</field>
+        <field name="name">Classes with Open Spots</field>
+        <field name="description">Upcoming class sessions that still have available capacity</field>
+        <field name="category">read</field>
+        <field name="parameters_schema">{
+    "type": "object",
+    "properties": {
+        "days": {"type": "integer", "description": "How many days ahead to look (default: 7)"}
+    }
+}</field>
+        <field name="example_phrases">Which classes have open spots?
+What classes still have room this week?
+Any openings in upcoming classes?
+Where are there available spots?
+Show classes that aren't full</field>
+        <field name="allowed_roles">instructor,admin</field>
+        <field name="requires_confirmation">False</field>
+        <field name="is_undoable">False</field>
+        <field name="supports_bulk">False</field>
+        <field name="active">True</field>
+    </record>
+    <record id="intent_attendance_streak" model="ai.intent.schema">
+        <field name="intent_type">attendance_streak</field>
+        <field name="name">Attendance Streak</field>
+        <field name="description">Current consecutive-day check-in streak for a member</field>
+        <field name="category">read</field>
+        <field name="parameters_schema">{
+    "type": "object",
+    "properties": {
+        "member_name": {"type": "string", "description": "Name of the member"},
+        "member_id": {"type": "integer", "description": "ID of the member"}
+    },
+    "required": ["member_name"]
+}</field>
+        <field name="example_phrases">What's Alex's attendance streak?
+How many days in a row has Sarah come in?
+Is John on a streak?
+Current streak for Mike
+How long is Emma's check-in streak?</field>
+        <field name="allowed_roles">instructor,admin</field>
+        <field name="requires_confirmation">False</field>
+        <field name="is_undoable">False</field>
+        <field name="supports_bulk">False</field>
+        <field name="active">True</field>
+    </record>
+    
 </data>
 </odoo>

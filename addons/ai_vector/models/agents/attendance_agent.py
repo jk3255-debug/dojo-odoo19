@@ -19,6 +19,9 @@ AGENT_CONFIG = {
         "ai_vector.intent_new_members",
         "ai_vector.intent_belt_stuck",
         "ai_vector.intent_peak_hours",
+        "ai_vector.intent_today_checkins",
+        "ai_vector.intent_open_spots",
+        "ai_vector.intent_attendance_streak",
         "ai_vector.intent_attendance_log_create",
         "ai_vector.intent_schedule_today",
         "ai_vector.intent_class_list",
@@ -45,6 +48,9 @@ ATTENDANCE MAPPINGS:
 - "new members this month", "who joined recently", "new signups" → new_members
 - "how long at their belt", "overdue for promotion", "stuck at belt" → belt_stuck
 - "busiest hours", "peak times", "when is it most crowded" → peak_hours
+- "who checked in today", "today's attendance", "how many came in today" → today_checkins
+- "classes with open spots", "what's not full", "any openings" → open_spots
+- "attendance streak", "days in a row", "on a streak" → attendance_streak
 - "check out [name]", "[name] is leaving", "[name] is done", "sign out [name]" → attendance_checkout
 - "attendance history for [name]", "how many classes has [name] attended", "[name]'s attendance record" → attendance_history
 - "attendance rate for [name]", "how often does [name] come in", "[name]'s attendance stats/percentage" → attendance_rate

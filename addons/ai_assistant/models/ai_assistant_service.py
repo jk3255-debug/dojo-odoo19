@@ -3784,6 +3784,9 @@ class AiAssistantService(models.AbstractModel):
             "new_members": self._handle_new_members,
             "belt_stuck": self._handle_belt_stuck,
             "peak_hours": self._handle_peak_hours,
+            "today_checkins": self._handle_today_checkins,
+            "open_spots": self._handle_open_spots,
+            "attendance_streak": self._handle_attendance_streak,
             "revenue_summary": self._handle_revenue_summary,
             "guardian_portal_invite": self._handle_guardian_portal_invite,
             # CRM Batch D (methods provided by dojo_crm via _inherit)
@@ -4888,6 +4891,81 @@ class AiAssistantService(models.AbstractModel):
                 "busiest_days": [{"day": d, "count": c} for d, c in top_days],
                 "message": (f"Busiest check-in times over the last {period} ({len(logs)} check-ins):\n"
                             f"• Peak hours: {hours_str}\n• Peak days: {days_str}")}
+
+    def _handle_today_checkins(self, intent_data, resolved_data, action_log):
+        """Members who checked in today. Read-only."""
+        from datetime import date, datetime, time
+        start = datetime.combine(date.today(), time.min)
+        Att = self.env["dojo.attendance.log"].sudo()
+        logs = Att.search([("checkin_datetime", ">=", str(start))], order="checkin_datetime desc")
+        if not logs:
+            return {"success": True, "count": 0, "message": "No check-ins recorded yet today."}
+        names = []
+        for l in logs:
+            nm = l.member_id.name if l.member_id else None
+            if nm and nm not in names:
+                names.append(nm)
+        count = len(names)
+        preview = ", ".join(names[:15])
+        more = f" (+{count - 15} more)" if count > 15 else ""
+        return {"success": True, "count": count, "checkins": len(logs), "members": names,
+                "message": f"{count} member{'s' if count != 1 else ''} checked in today: {preview}{more}."}
+
+    def _handle_open_spots(self, intent_data, resolved_data, action_log):
+        """Upcoming class sessions that still have open capacity. Read-only."""
+        from datetime import datetime, timedelta
+        params = intent_data.get("parameters", {}) if intent_data else {}
+        days = int(params.get("days") or 7)
+        now = datetime.now()
+        until = now + timedelta(days=days)
+        Session = self.env["dojo.class.session"].sudo()
+        sessions = Session.search([("start_datetime", ">=", str(now)),
+                                   ("start_datetime", "<=", str(until))], order="start_datetime asc")
+        rows = []
+        for s in sessions:
+            cap = s.capacity or 0
+            taken = len(s.enrollment_ids.filtered(lambda e: e.status == "registered"))
+            open_n = cap - taken
+            if open_n > 0:
+                rows.append({"name": s.name or "Class", "start": str(s.start_datetime),
+                             "open": open_n, "capacity": cap})
+        if not rows:
+            return {"success": True, "count": 0,
+                    "message": f"No classes with open spots in the next {days} days."}
+        lines = [f"• {r['name']} — {r['open']}/{r['capacity']} open ({r['start']})" for r in rows[:20]]
+        return {"success": True, "count": len(rows), "data": rows[:20],
+                "message": f"{len(rows)} upcoming class(es) with open spots (next {days} days):\n" + "\n".join(lines)}
+
+    def _handle_attendance_streak(self, intent_data, resolved_data, action_log):
+        """Current consecutive-day check-in streak for a member. Read-only."""
+        from datetime import date, timedelta
+        params = intent_data.get("parameters", {}) if intent_data else {}
+        member_id = resolved_data.get("member_id") or params.get("member_id")
+        member_name = params.get("member_name") or resolved_data.get("member_name") or ""
+        if not member_id:
+            return {"success": False, "message": f"I couldn't find a member named '{member_name}'."}
+        Att = self.env["dojo.attendance.log"].sudo()
+        logs = Att.search([("member_id", "=", int(member_id)), ("checkin_datetime", "!=", False)],
+                          order="checkin_datetime desc")
+        member = self.env["dojo.member"].sudo().browse(int(member_id))
+        member_display = member.name if member.exists() else member_name
+        if not logs:
+            return {"success": True, "member": member_display, "streak": 0,
+                    "message": f"{member_display} has no check-ins on record yet."}
+        visit_dates = sorted({l.checkin_datetime.date() for l in logs if l.checkin_datetime}, reverse=True)
+        today = date.today()
+        if visit_dates[0] not in (today, today - timedelta(days=1)):
+            return {"success": True, "member": member_display, "streak": 0, "last_visit": str(visit_dates[0]),
+                    "message": f"{member_display}'s streak is 0 — last check-in was {visit_dates[0]}."}
+        streak = 1
+        for i in range(1, len(visit_dates)):
+            if visit_dates[i] == visit_dates[i - 1] - timedelta(days=1):
+                streak += 1
+            else:
+                break
+        return {"success": True, "member": member_display, "streak": streak, "last_visit": str(visit_dates[0]),
+                "message": f"{member_display} is on a {streak}-day check-in streak (last visit {visit_dates[0]})."}
+
     @api.model
     def _handle_trial_conversion_report(self, intent_data, resolved_data, action_log):
         """Stub — overridden by dojo_crm.models.ai_crm_service via _inherit."""
