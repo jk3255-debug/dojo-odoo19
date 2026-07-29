@@ -234,6 +234,29 @@ How many times has Test8 come this month?</field>
         <field name="active">True</field>
     </record>
 
+    <record id="intent_at_risk_members" model="ai.intent.schema">
+        <field name="intent_type">at_risk_members</field>
+        <field name="name">At-Risk Members</field>
+        <field name="description">List members who have not attended any class in the last N days (churn risk)</field>
+        <field name="category">read</field>
+        <field name="parameters_schema">{
+    "type": "object",
+    "properties": {
+        "days": {"type": "integer", "description": "Number of days with no attendance to flag a member as at-risk", "default": 14}
+    }
+}</field>
+        <field name="example_phrases">Who's at risk of quitting?
+Which members haven't come in lately?
+Show me members who stopped showing up
+Who hasn't attended in the last two weeks?
+List inactive members</field>
+        <field name="allowed_roles">instructor,admin</field>
+        <field name="requires_confirmation">False</field>
+        <field name="is_undoable">False</field>
+        <field name="supports_bulk">False</field>
+        <field name="active">True</field>
+    </record>
+
     
 </data>
 </odoo>

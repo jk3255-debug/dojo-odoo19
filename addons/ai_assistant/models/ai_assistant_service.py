@@ -3781,6 +3781,7 @@ class AiAssistantService(models.AbstractModel):
             "instructor_todo_complete": self._handle_instructor_todo_complete,
             # ── Batch D: Revenue, CRM & Portal ────────────────────────────
             "attendance_rate": self._handle_attendance_rate,
+            "at_risk_members": self._handle_at_risk_members,
             "revenue_summary": self._handle_revenue_summary,
             "guardian_portal_invite": self._handle_guardian_portal_invite,
             # CRM Batch D (methods provided by dojo_crm via _inherit)
@@ -4639,7 +4640,50 @@ class AiAssistantService(models.AbstractModel):
                 f"({per_week}/week), {total_visits} total on record."
             ),
         }
+    
+    def _handle_at_risk_members(self, intent_data, resolved_data, action_log):
+        """
+        List members who haven't attended any class in the last N days.
 
+        Useful for spotting churn risk. Read-only. Returns up to 50 members
+        sorted by how long they've been absent.
+        """
+        params = intent_data.get("parameters", {}) if intent_data else {}
+        days = int(params.get("days") or 14)
+
+        from datetime import date, timedelta
+        cutoff = date.today() - timedelta(days=days)
+
+        Member = self.env["dojo.member"].sudo()
+        Attendance = self.env["dojo.attendance"].sudo()
+
+        recent = Attendance.search([("checkin_datetime", ">=", str(cutoff))])
+        active_ids = set(recent.mapped("member_id").ids)
+
+        all_members = Member.search([])
+        at_risk = [m for m in all_members if m.id not in active_ids]
+
+        results = []
+        for m in at_risk[:50]:
+            last = Attendance.search(
+                [("member_id", "=", m.id)],
+                order="checkin_datetime desc",
+                limit=1,
+            )
+            last_seen = str(last.checkin_datetime.date()) if last else "never"
+            results.append({"name": m.name, "last_seen": last_seen})
+
+        return {
+            "success": True,
+            "days": days,
+            "count": len(results),
+            "members": results,
+            "message": (
+                f"{len(results)} member(s) haven't attended in the last {days} days."
+                if results else
+                f"Good news — every member has attended within the last {days} days."
+            ),
+        }
     
     @api.model
     def _handle_revenue_summary(self, intent_data, resolved_data, action_log):
