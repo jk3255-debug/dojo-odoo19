@@ -3780,6 +3780,7 @@ class AiAssistantService(models.AbstractModel):
             "belt_readiness_check": self._handle_belt_readiness_check,
             "instructor_todo_complete": self._handle_instructor_todo_complete,
             # ── Batch D: Revenue, CRM & Portal ────────────────────────────
+            "attendance_rate": self._handle_attendance_rate,
             "revenue_summary": self._handle_revenue_summary,
             "guardian_portal_invite": self._handle_guardian_portal_invite,
             # CRM Batch D (methods provided by dojo_crm via _inherit)
@@ -4577,6 +4578,69 @@ class AiAssistantService(models.AbstractModel):
             domain.append(("date", "<=", date_to))
         return domain
 
+    def _handle_attendance_rate(self, intent_data, resolved_data, action_log):
+        """
+        Return a member's attendance statistics for a period.
+
+        Counts attendance log records for one member over a time window
+        (month / quarter / year) and reports total visits, visits in the
+        period, and a simple weekly average. Read-only.
+        """
+        params = intent_data.get("parameters", {}) if intent_data else {}
+
+        # Which member? Prefer the resolved ID, fall back to the name.
+        member_id = resolved_data.get("member_id") or params.get("member_id")
+        member_name = params.get("member_name") or resolved_data.get("member_name") or ""
+
+        if not member_id:
+            return {
+                "success": False,
+                "message": f"I couldn't find a member named '{member_name}'.",
+            }
+
+        # Work out the date window.
+        from datetime import date, timedelta
+        period = (params.get("period") or "month").lower()
+        today = date.today()
+        if period in ("quarter", "90days"):
+            date_from = today - timedelta(days=90)
+        elif period in ("year", "annual"):
+            date_from = date(today.year, 1, 1)
+        else:
+            period = "month"
+            date_from = today - timedelta(days=30)
+
+        # Read the member's attendance records.
+        Attendance = self.env["dojo.attendance"].sudo()
+        member = self.env["dojo.member"].sudo().browse(int(member_id))
+        member_display = member.name if member.exists() else member_name
+
+        total_visits = Attendance.search_count([
+            ("member_id", "=", int(member_id)),
+        ])
+        period_visits = Attendance.search_count([
+            ("member_id", "=", int(member_id)),
+            ("checkin_datetime", ">=", str(date_from)),
+        ])
+
+        # Simple weekly average over the window.
+        weeks = max(1, (today - date_from).days / 7.0)
+        per_week = round(period_visits / weeks, 1)
+
+        return {
+            "success": True,
+            "member": member_display,
+            "period": period,
+            "total_visits": total_visits,
+            "period_visits": period_visits,
+            "avg_per_week": per_week,
+            "message": (
+                f"{member_display} attended {period_visits} time(s) in the last {period} "
+                f"({per_week}/week), {total_visits} total on record."
+            ),
+        }
+
+    
     @api.model
     def _handle_revenue_summary(self, intent_data, resolved_data, action_log):
         """

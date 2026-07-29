@@ -209,5 +209,31 @@ No-show list for today's session</field>
         <field name="active">True</field>
     </record>
 
+    <record id="intent_attendance_rate" model="ai.intent.schema">
+        <field name="intent_type">attendance_rate</field>
+        <field name="name">Attendance Rate</field>
+        <field name="description">Get a member's attendance statistics: total visits, visits this month, and attendance rate</field>
+        <field name="category">read</field>
+        <field name="parameters_schema">{
+    "type": "object",
+    "properties": {
+        "member_name": {"type": "string", "description": "Name of the member"},
+        "member_id": {"type": "integer", "description": "ID of the member"},
+        "period": {"type": "string", "description": "Time window: 'month' (default), 'quarter', or 'year'"}
+    }
+}</field>
+        <field name="example_phrases">What's John's attendance rate?
+How often does Sarah actually come in?
+Show me Mike's attendance stats
+What percentage of classes has Jane attended?
+How many times has Test8 come this month?</field>
+        <field name="allowed_roles">instructor,admin</field>
+        <field name="requires_confirmation">False</field>
+        <field name="is_undoable">False</field>
+        <field name="supports_bulk">False</field>
+        <field name="active">True</field>
+    </record>
+
+    
 </data>
 </odoo>

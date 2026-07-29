@@ -15,6 +15,7 @@ AGENT_CONFIG = {
         "ai_vector.intent_attendance_checkin",
         "ai_vector.intent_attendance_checkout",
         "ai_vector.intent_attendance_history",
+        "ai_vector.intent_attendance_rate",
         "ai_vector.intent_attendance_log_create",
         "ai_vector.intent_schedule_today",
         "ai_vector.intent_class_list",
@@ -40,6 +41,7 @@ ATTENDANCE MAPPINGS:
 - "check in [name]", "[name] is here", "[name] arrived", "sign in [name]" → attendance_checkin
 - "check out [name]", "[name] is leaving", "[name] is done", "sign out [name]" → attendance_checkout
 - "attendance history for [name]", "how many classes has [name] attended", "[name]'s attendance record" → attendance_history
+- "attendance rate for [name]", "how often does [name] come in", "[name]'s attendance stats/percentage" → attendance_rate
 - "log attendance for [name]", "mark [name] attended", "record [name] was here" → attendance_log_create
 - "today's schedule", "what classes are today", "who's coming in today", "today's check-ins" → schedule_today
 - "all classes", "class list", "what classes do we have", "show classes" → class_list
