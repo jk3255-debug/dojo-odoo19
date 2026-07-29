@@ -3781,6 +3781,9 @@ class AiAssistantService(models.AbstractModel):
             "instructor_todo_complete": self._handle_instructor_todo_complete,
             # ── Batch D: Revenue, CRM & Portal ────────────────────────────
             "attendance_rate": self._handle_attendance_rate,
+            "new_members": self._handle_new_members,
+            "belt_stuck": self._handle_belt_stuck,
+            "peak_hours": self._handle_peak_hours,
             "revenue_summary": self._handle_revenue_summary,
             "guardian_portal_invite": self._handle_guardian_portal_invite,
             # CRM Batch D (methods provided by dojo_crm via _inherit)
@@ -4792,7 +4795,99 @@ class AiAssistantService(models.AbstractModel):
     def _handle_lead_note_add(self, intent_data, resolved_data, action_log):
         """Stub — overridden by dojo_crm.models.ai_crm_service via _inherit."""
         return {"success": False, "error": "CRM module not available."}
+    
+    def _handle_new_members(self, intent_data, resolved_data, action_log):
+        """List/count members who joined within a period. Read-only."""
+        from datetime import date, timedelta
+        params = intent_data.get("parameters", {}) if intent_data else {}
+        period = (params.get("period") or "month").lower()
+        today = date.today()
+        if period in ("week", "7days"):
+            date_from = today - timedelta(days=7); label = "the last 7 days"
+        elif period in ("year", "annual"):
+            date_from = date(today.year, 1, 1); label = "this year"
+        else:
+            period = "month"; date_from = date(today.year, today.month, 1); label = "this month"
+        Member = self.env["dojo.member"].sudo()
+        members = Member.search([("create_date", ">=", str(date_from))], order="create_date desc")
+        names = members.mapped("name")
+        count = len(members)
+        if count == 0:
+            return {"success": True, "count": 0, "period": period,
+                    "message": f"No new members joined {label}."}
+        preview = ", ".join(names[:10])
+        more = f" (+{count - 10} more)" if count > 10 else ""
+        return {"success": True, "count": count, "period": period, "members": names,
+                "message": f"{count} new member{'s' if count != 1 else ''} joined {label}: {preview}{more}."}
 
+    def _handle_belt_stuck(self, intent_data, resolved_data, action_log):
+        """Time at current belt for one member, or roster of promotion-overdue members. Read-only."""
+        from datetime import date
+        params = intent_data.get("parameters", {}) if intent_data else {}
+        Rank = self.env["dojo.member.rank"].sudo()
+        today = date.today()
+        member_id = resolved_data.get("member_id") or params.get("member_id")
+        if member_id:
+            rank = Rank.search([("member_id", "=", int(member_id))], order="date_awarded desc", limit=1)
+            if not rank:
+                return {"success": True, "message": "That member has no belt on record yet."}
+            belt = rank.rank_id.name if rank.rank_id else "their current belt"
+            days = (today - rank.date_awarded).days
+            return {"success": True, "member": rank.member_id.name, "belt": belt, "days_at_belt": days,
+                    "message": f"{rank.member_id.name} has been at {belt} for {days} days (awarded {rank.date_awarded})."}
+        threshold = int(params.get("min_days") or 180)
+        members = self.env["dojo.member"].sudo().search([])
+        rows = []
+        for m in members:
+            r = Rank.search([("member_id", "=", m.id)], order="date_awarded desc", limit=1)
+            if not r:
+                continue
+            days = (today - r.date_awarded).days
+            if days >= threshold:
+                rows.append({"name": m.name, "belt": r.rank_id.name if r.rank_id else "", "days": days})
+        rows.sort(key=lambda x: x["days"], reverse=True)
+        if not rows:
+            return {"success": True, "count": 0,
+                    "message": f"No members have been at their current belt for {threshold}+ days."}
+        lines = [f"• {x['name']} — {x['belt']} · {x['days']} days" for x in rows[:20]]
+        return {"success": True, "count": len(rows), "data": rows[:20],
+                "message": f"{len(rows)} member(s) at their current belt {threshold}+ days (promotion candidates):\n" + "\n".join(lines)}
+
+    def _handle_peak_hours(self, intent_data, resolved_data, action_log):
+        """Busiest check-in hours/days from attendance logs. Read-only."""
+        from datetime import date, timedelta
+        from collections import Counter
+        params = intent_data.get("parameters", {}) if intent_data else {}
+        period = (params.get("period") or "90days").lower()
+        today = date.today()
+        if period in ("month", "30days"):
+            date_from = today - timedelta(days=30); period = "month"
+        elif period in ("year", "annual"):
+            date_from = today - timedelta(days=365); period = "year"
+        else:
+            period = "90days"; date_from = today - timedelta(days=90)
+        Att = self.env["dojo.attendance.log"].sudo()
+        logs = Att.search([("checkin_datetime", ">=", str(date_from)), ("checkin_datetime", "!=", False)])
+        if not logs:
+            return {"success": True, "message": f"No check-ins recorded since {date_from}."}
+        hour_counts, dow_counts = Counter(), Counter()
+        for l in logs:
+            dt = l.checkin_datetime
+            if not dt:
+                continue
+            hour_counts[dt.hour] += 1
+            dow_counts[dt.strftime("%A")] += 1
+        def fmt_hour(h):
+            return f"{h % 12 or 12}{'AM' if h < 12 else 'PM'}"
+        top_hours = hour_counts.most_common(3)
+        top_days = dow_counts.most_common(3)
+        hours_str = ", ".join(f"{fmt_hour(h)} ({c})" for h, c in top_hours)
+        days_str = ", ".join(f"{d} ({c})" for d, c in top_days)
+        return {"success": True, "total_checkins": len(logs),
+                "busiest_hours": [{"hour": h, "count": c} for h, c in top_hours],
+                "busiest_days": [{"day": d, "count": c} for d, c in top_days],
+                "message": (f"Busiest check-in times over the last {period} ({len(logs)} check-ins):\n"
+                            f"• Peak hours: {hours_str}\n• Peak days: {days_str}")}
     @api.model
     def _handle_trial_conversion_report(self, intent_data, resolved_data, action_log):
         """Stub — overridden by dojo_crm.models.ai_crm_service via _inherit."""

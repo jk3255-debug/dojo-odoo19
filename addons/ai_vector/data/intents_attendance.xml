@@ -234,6 +234,74 @@ How many times has Test8 come this month?</field>
         <field name="active">True</field>
     </record>
 
+    <record id="intent_new_members" model="ai.intent.schema">
+        <field name="intent_type">new_members</field>
+        <field name="name">New Members</field>
+        <field name="description">Count and list members who joined within a period (this month by default)</field>
+        <field name="category">read</field>
+        <field name="parameters_schema">{
+    "type": "object",
+    "properties": {
+        "period": {"type": "string", "enum": ["week", "month", "year"], "description": "Time window (default: month)"}
+    }
+}</field>
+        <field name="example_phrases">How many new members this month?
+Who joined recently?
+Show me new signups this month
+How many people signed up this week?
+New members this year</field>
+        <field name="allowed_roles">instructor,admin</field>
+        <field name="requires_confirmation">False</field>
+        <field name="is_undoable">False</field>
+        <field name="supports_bulk">False</field>
+        <field name="active">True</field>
+    </record>
+    <record id="intent_belt_stuck" model="ai.intent.schema">
+        <field name="intent_type">belt_stuck</field>
+        <field name="name">Time at Current Belt</field>
+        <field name="description">How long a member has been at their current belt, or list members overdue for promotion</field>
+        <field name="category">read</field>
+        <field name="parameters_schema">{
+    "type": "object",
+    "properties": {
+        "member_name": {"type": "string", "description": "Name of the member (optional)"},
+        "member_id": {"type": "integer", "description": "ID of the member (optional)"},
+        "min_days": {"type": "integer", "description": "Minimum days at belt for the roster view (default: 180)"}
+    }
+}</field>
+        <field name="example_phrases">How long has Alex been at his belt?
+Who's overdue for a promotion?
+Which members have been stuck at their belt the longest?
+How long since Sarah was promoted?
+Who's been at the same belt for over 6 months?</field>
+        <field name="allowed_roles">instructor,admin</field>
+        <field name="requires_confirmation">False</field>
+        <field name="is_undoable">False</field>
+        <field name="supports_bulk">False</field>
+        <field name="active">True</field>
+    </record>
+    <record id="intent_peak_hours" model="ai.intent.schema">
+        <field name="intent_type">peak_hours</field>
+        <field name="name">Peak Check-in Times</field>
+        <field name="description">Busiest check-in hours and days based on attendance logs</field>
+        <field name="category">read</field>
+        <field name="parameters_schema">{
+    "type": "object",
+    "properties": {
+        "period": {"type": "string", "enum": ["month", "90days", "year"], "description": "Look-back window (default: 90days)"}
+    }
+}</field>
+        <field name="example_phrases">What are our busiest hours?
+When is the gym most crowded?
+What time do most people check in?
+Peak attendance times
+Which days are busiest?</field>
+        <field name="allowed_roles">instructor,admin</field>
+        <field name="requires_confirmation">False</field>
+        <field name="is_undoable">False</field>
+        <field name="supports_bulk">False</field>
+        <field name="active">True</field>
+    </record>
     
 </data>
 </odoo>
