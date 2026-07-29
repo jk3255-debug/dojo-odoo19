@@ -4611,7 +4611,7 @@ class AiAssistantService(models.AbstractModel):
             date_from = today - timedelta(days=30)
 
         # Read the member's attendance records.
-        Attendance = self.env["dojo.attendance"].sudo()
+        Attendance = self.env["dojo.attendance.log"].sudo()
         member = self.env["dojo.member"].sudo().browse(int(member_id))
         member_display = member.name if member.exists() else member_name
 
